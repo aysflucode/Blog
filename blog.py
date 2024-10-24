@@ -49,11 +49,37 @@ def index():
 @app.route("/about")
 def about():
     return render_template("about.html")
+#Makale Sayfası
+@app.route("/articles")
+def articles():
+    cursor = mysql.connection.cursor()
+
+    sorgu = "Select * From articles"
+    
+    result = cursor.execute(sorgu)
+
+    if result > 0:
+        articles = cursor.fetchall()
+
+        return render_template("articles.html", articles = articles)
+
+    else:
+        return render_template("articles.html")
 
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    return render_template("dashboard.html")
+    cursor = mysql.connection.cursor()
+
+    sorgu = "Select * From articles where author = %s "
+
+    result = cursor.execute(sorgu,(session["username"],))
+
+    if result > 0:
+        articles = cursor.fetchall()
+        return render_template("dashboard.html", articles = articles)
+    else:
+        return render_template("dashboard.html")
 
 @app.route("/register", methods= ["GET","POST"])
 def register():
@@ -115,6 +141,24 @@ def login():
         
     return render_template("login.html",form = form) 
 
+#Detay Sayfası
+
+@app.route("/article/<string:id>")
+def article(id):
+    cursor = mysql.connection.cursor()
+
+    sorgu = "Select * From articles where id = %s"
+
+    result = cursor.execute(sorgu,(id,))
+
+    if result >0:
+        article = cursor.fetchone()
+
+        return render_template("article.html", article = article)
+    else:
+        return render_template("article.html")
+
+
 #logout işlemi
 
 @app.route("/logout")
@@ -147,7 +191,31 @@ def addarticle():
 
     return render_template("addarticle.html", form = form )
 
-#Makale Forum
+#Makale Silme
+@app.route("/delete/<string:id>")
+@login_required
+def delete(id):
+    cursor = mysql.connection.cursor()
+    
+    sorgu = "Select * From articles where author =%s and id = %s"
+
+    result = cursor.execute(sorgu,(session["username"],id))
+
+    if result > 0 :
+        sorgu2 = "Delete From articles where id = %s"
+        cursor.execute(sorgu2,(id,))
+        mysql.connection.commit()
+
+        return redirect(url_for("dashboard"))
+    
+    else :
+        flash("Böyle bir makale yok veya bu işleme yetkiniz yok.","danger")
+        return redirect(url_for("index"))      
+
+
+
+
+#Makale Form
 
 class articleForm(Form):
     title = StringField("Makale Başlığı", validators=[validators.length(min = 5,max= 100)])
