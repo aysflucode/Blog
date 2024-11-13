@@ -4,6 +4,11 @@
 <h3>Makaleler</h3>
 <hr>
 {% if articles %}
+<form action="/search" method= "post">
+<input type="text" name = "keyword" class="input-sm" maxlength="64" placeholder="Ara">
+<button type="submit" class="btn btn-danger">Ara</button>
+</form>
+<hr>
 
 <ul class="list-group">
   {% for article in articles %}
@@ -12,6 +17,6 @@
 </ul>
 
 {% else %}
-<div>class = "alert alert-danger"> Bu blokta henüz makale bulunmuyor..</div>
+<div class = "alert alert-danger"> Bu blokta henüz makale bulunmuyor..</div>
 {% endif %}
 {% endblock body %}

@@ -5,6 +5,7 @@ from passlib.hash import sha256_crypt
 from functools import wraps 
 
 
+
 #kullanıcı giriş decorator'ı
 def login_required(f):
     @wraps(f)
@@ -17,8 +18,8 @@ def login_required(f):
     return decorated_function
 
 
-#Kullanıcı kayıt formu
 
+#Kullanıcı kayıt formu
 class RegisterForm(Form):
     name = StringField("İsim Soyisim", validators=[validators.length(min=4,max=25)])
     username = StringField("Kullanıcı Adı", validators=[validators.length(min=5,max=35)])
@@ -49,6 +50,8 @@ def index():
 @app.route("/about")
 def about():
     return render_template("about.html")
+
+
 #Makale Sayfası
 @app.route("/articles")
 def articles():
@@ -142,7 +145,6 @@ def login():
     return render_template("login.html",form = form) 
 
 #Detay Sayfası
-
 @app.route("/article/<string:id>")
 def article(id):
     cursor = mysql.connection.cursor()
@@ -160,17 +162,15 @@ def article(id):
 
 
 #logout işlemi
-
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("index"))
 
 # Makale ekleme
-
 @app.route("/addarticle", methods = ["GET", "POST"])
 def addarticle():
-    form = articleForm(request.form)
+    form = ArticleForm(request.form)
 
     if request.method == "POST" and form.validate():
         title = form.title.data
@@ -212,14 +212,73 @@ def delete(id):
         flash("Böyle bir makale yok veya bu işleme yetkiniz yok.","danger")
         return redirect(url_for("index"))      
 
+#Makale Güncelleme
+@app.route("/edit/<string:id>", methods = ["GET","POST"])
+@login_required
+def update(id):
+    if request.method == "GET":
+        cursor = mysql.connection.cursor()
 
+        sorgu = "Select * from articles where id = %s and author = %s"
+        result = cursor.execute(sorgu,(id,session["username"]))
+
+        if result == 0:
+            flash("Böyle bir makale yok veya bu işleme yetkiniz yok","danger")
+            return redirect(url_for("index"))
+        else:
+            article = cursor.fetchone()
+            form = ArticleForm()
+
+            form.title.data = article["title"]
+            form.content.data = article["content"]
+            return render_template("update.html", form = form)
+
+    else:
+        #Post request
+        form = ArticleForm(request.form)
+
+        newtitle = form.title.data
+        newcontent = form.content.data
+
+        sorgu2 = "Update articles Set title = %s, content = %s where id = %s"
+
+        cursor = mysql.connection.cursor()
+
+        cursor.execute(sorgu2,(newtitle, newcontent, id))
+
+        mysql.connection.commit()
+
+        flash("Makale başarıyla güncellendi","success")
+
+        return redirect(url_for("dashboard"))
 
 
 #Makale Form
-
-class articleForm(Form):
+class ArticleForm(Form):
     title = StringField("Makale Başlığı", validators=[validators.length(min = 5,max= 100)])
     content = TextAreaField("Makale İçeriği", validators=[validators.length(min = 10)])
+
+#Arama URL
+@app.route("/search", methods= ["GET","POST"])
+def search():
+    if request.method == "GET":
+        return redirect(url_for("index"))
+    else:
+        keyword = request.form.get("keyword")
+
+        cursor = mysql.connect.cursor()
+
+        sorgu = "Select * from articles where title like '%" + keyword + "%'"
+
+        result = cursor.execute(sorgu)
+
+        if result == 0:
+            flash("Aranan kelimeye uygun makale bulunamadı...","warning")
+            return redirect(url_for("articles"))
+        else:
+            articles = cursor.fetchall()
+            return render_template("articles.html", articles = articles)
+
 
 if __name__ == "__main__":
     app.run(debug = True)
